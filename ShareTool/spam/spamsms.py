@@ -50,7 +50,7 @@ def check_internet_connection():
 # Kiểm tra kết nối internet
 if check_internet_connection():
     print(f"{luc}Vui Lòng Chờ!!!")
-    time.sleep(0.1)
+    sleep(0.1)
 else:
     print(f"{do}Vui Lòng Kiểm Tra Kết NốI!!!")
     sys.exit()
