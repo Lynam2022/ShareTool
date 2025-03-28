@@ -31,7 +31,7 @@ tim='\033[1;35m'
 xanhlam='\033[1;36m'
 xam='\033[1;30m'
 black='\033[1;19m'
-time=datetime.now().strftime("%H:%M:%S%p")
+current_time=datetime.now().strftime("%H:%M:%S%p")
 from pystyle import *
 data_machine = []
 today = date.today()
