@@ -50,7 +50,7 @@ def check_internet_connection():
 # Kiểm tra kết nối internet
 if check_internet_connection():
     print(f"{luc}Vui Lòng Chờ!!!")
-    sleep(0.1)
+    time.sleep(0.1)
 else:
     print(f"{do}Vui Lòng Kiểm Tra Kết NốI!!!")
     sys.exit()
@@ -110,7 +110,7 @@ def banner():
   for h in ban:
     sys.stdout.write(h)
     sys.stdout.flush()
-    sleep(0.003)
+    time.sleep(0.003)
 banner()
 sdt = input("\033[1;97m[\033[1;91m❣\033[1;97m] \033[1;36m✈  \033[1;32 NNhập Phone Number : ")
 while not re.search("^(0?)(3[2-9]|5[6|8|9]|7[0|6-9]|8[0-6|8|9]|9[0-4|6-9])[0-9]{7}$",sdt):
