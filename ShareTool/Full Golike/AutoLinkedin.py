@@ -910,7 +910,7 @@ headers = {'Accept-Language':'vi,en-US;q=0.9,en;q=0.8',
             'Content-Type':'application/json;charset=utf-8'            
 }
 
-url1 = 'https://gateway.golike.net/api/users/me'
+url1 = 'https://gateway.golike.net/api/login'
 checkurl1 = ses.get(url1,headers=headers).json()
     #user
 if checkurl1['status']== 200 :
