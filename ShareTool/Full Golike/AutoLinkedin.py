@@ -2,14 +2,14 @@ import sys
 import requests
 import time
 import os
-from art import text2art
+import subprocess
 from colorama import Fore, init
 import random
 
 # Khởi tạo colorama
 init()
 
-# Danh sách User-Agent (rút gọn để dễ quản lý, bạn có thể thêm lại toàn bộ danh sách)
+# Danh sách User-Agent (rút gọn)
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36",
@@ -22,7 +22,14 @@ def install_dependencies():
         try:
             __import__(lib)
         except ImportError:
-            os.system(f"pip install {lib}")
+            print(f"Đang cài đặt {lib}...")
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", lib])
+                print(f"Đã cài đặt {lib} thành công!")
+            except subprocess.CalledProcessError:
+                print(f"Lỗi: Không thể cài đặt {lib}. Vui lòng chạy lệnh sau thủ công:")
+                print(f"    {sys.executable} -m pip install {lib}")
+                sys.exit(1)
 
 def countdown(time_sec):
     """Hiển thị bộ đếm ngược với màu sắc."""
@@ -39,6 +46,7 @@ def countdown(time_sec):
 
 def banner():
     """Hiển thị biểu ngữ ASCII."""
+    from art import text2art  # Import tại đây sau khi đảm bảo art đã cài
     os.system("cls" if os.name == "nt" else "clear")
     ascii_art = text2art("Huong Dev", font="small")
     info = f"""
@@ -69,7 +77,7 @@ def get_headers(auth_token):
     }
 
 def linkedin_tasks(ses, headers):
-    """Xử lý các tác vụ LinkedIn."""
+    """Xử lý các tác vụ LinkedIn (follow và like)."""
     try:
         response = ses.get('https://gateway.golike.net/api/linkedin-account', headers=headers)
         response.raise_for_status()
@@ -130,10 +138,11 @@ def linkedin_tasks(ses, headers):
     total_coins = 0
     success_count = 0
 
-    for _ in range(job_count):
+    for i in range(job_count):
         try:
             job_url = f'https://gateway.golike.net/api/advertising/publishers/linkedin/jobs?account_id={account_id}&data=null'
             job_response = ses.get(job_url, headers=headers)
+            job_response.raise_for_status()
             job_data = job_response.json()
 
             if job_data.get('status') != 200:
@@ -146,32 +155,51 @@ def linkedin_tasks(ses, headers):
             object_id = job_data['data']['object_id']
             job_type = job_data['data']['type']
 
+            linkedin_headers = {
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'cookie': cookie,
+                'user-agent': random.choice(USER_AGENTS),
+            }
+
             countdown(delay)
 
             if job_type == 'follow':
-                linkedin_headers = {
-                    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'cookie': cookie,
-                    'user-agent': random.choice(USER_AGENTS),
-                }
-                response = requests.get(job_link, headers=linkedin_headers).text
+                response = requests.get(job_link, headers=linkedin_headers)
+                if response.status_code != 200:
+                    print(f"Lỗi khi follow: {response.status_code}")
+                    continue
 
-                complete_data = {'account_id': account_id, 'ads_id': ads_id}
-                complete_url = 'https://gateway.golike.net/api/advertising/publishers/linkedin/complete-jobs'
-                complete_response = ses.post(complete_url, headers=headers, json=complete_data).json()
+            elif job_type == 'like':
+                like_payload = {'object_id': object_id}
+                response = requests.post(job_link, headers=linkedin_headers, json=like_payload)
+                if response.status_code != 200:
+                    print(f"Lỗi khi like: {response.status_code}")
+                    continue
 
-                if complete_response.get('success'):
-                    success_count += 1
-                    prices = complete_response['data']['prices']
-                    total_coins += prices
-                    current_time = time.strftime("%H:%M:%S", time.localtime())
-                    print(f"\033[1;31m| \033[1;36m{success_count}\033[1;97m | \033[1;33m{current_time}\033[1;97m | \033[1;32msuccess\033[1;97m | \033[1;31m{job_type}\033[1;97m | \033[1;32mẨn ID\033[1;97m | \033[1;32m+{prices}\033[1;97m | \033[1;33m{total_coins} vnđ")
-                else:
-                    skip_url = 'https://gateway.golike.net/api/advertising/publishers/linkedin/skip-jobs'
-                    ses.post(skip_url, headers=headers, params={'ads_id': ads_id, 'account_id': account_id, 'object_id': object_id})
-            # Thêm logic cho 'like' nếu cần
+            else:
+                print(f"Loại job không hỗ trợ: {job_type}")
+                continue
+
+            # Báo cáo hoàn thành job
+            complete_data = {'account_id': account_id, 'ads_id': ads_id}
+            complete_url = 'https://gateway.golike.net/api/advertising/publishers/linkedin/complete-jobs'
+            complete_response = ses.post(complete_url, headers=headers, json=complete_data).json()
+
+            if complete_response.get('success'):
+                success_count += 1
+                prices = complete_response['data']['prices']
+                total_coins += prices
+                current_time = time.strftime("%H:%M:%S", time.localtime())
+                print(f"\033[1;31m| \033[1;36m{success_count}\033[1;97m | \033[1;33m{current_time}\033[1;97m | \033[1;32msuccess\033[1;97m | \033[1;31m{job_type}\033[1;97m | \033[1;32mẨn ID\033[1;97m | \033[1;32m+{prices}\033[1;97m | \033[1;33m{total_coins} vnđ")
+            else:
+                skip_url = 'https://gateway.golike.net/api/advertising/publishers/linkedin/skip-jobs'
+                ses.post(skip_url, headers=headers, params={'ads_id': ads_id, 'account_id': account_id, 'object_id': object_id})
+                print(f"Job {job_type} thất bại, đã bỏ qua.")
         except Exception as e:
-            print(f"Lỗi khi thực hiện job: {e}")
+            print(f"Lỗi khi thực hiện job {i+1}: {e}")
+            countdown(5)
+
+    print(f"\nHoàn thành! Tổng xu kiếm được: {total_coins}")
 
 def main():
     """Hàm chính để chạy chương trình."""
